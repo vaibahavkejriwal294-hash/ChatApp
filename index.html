@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Team Chat - A modern group chat application for sharing messages, files, images, and videos">
+    <title>Team Chat | Group Messaging</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+    <!-- Welcome Modal for Username -->
+    <div id="usernameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">💬</div>
+            <h2>Welcome to Team Chat</h2>
+            <p>Enter your name to join the conversation</p>
+            <input type="text" id="usernameInput" placeholder="Your name..." maxlength="20" autocomplete="off">
+            <button id="joinBtn" class="btn-primary">Join Chat</button>
+        </div>
+    </div>
+
+    <!-- New Chat/Group Modal -->
+    <div id="newChatModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-icon">➕</div>
+            <h2>Create New Chat</h2>
+            <p>Enter a name for your group</p>
+            <input type="text" id="groupNameInput" placeholder="Group name..." maxlength="30" autocomplete="off">
+            <button id="createGroupBtn" class="btn-primary">Create Group</button>
+            <button id="cancelNewChatBtn" class="btn-secondary" style="margin-top: 0.5rem;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div id="searchModal" class="modal hidden">
+        <div class="modal-content search-modal">
+            <div class="search-header">
+                <h2>🔍 Search Messages</h2>
+                <button id="closeSearchBtn" class="btn-icon">✕</button>
+            </div>
+            <input type="text" id="searchInput" placeholder="Search messages..." autocomplete="off">
+            <div class="search-results" id="searchResults">
+                <p class="search-hint">Type to search through messages...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-icon">⚙️</div>
+            <h2>Group Settings</h2>
+            <div class="settings-form">
+                <label for="editGroupNameInput">Group Name</label>
+                <input type="text" id="editGroupNameInput" placeholder="Enter group name..." maxlength="30">
+                <button id="saveSettingsBtn" class="btn-primary">Save Changes</button>
+                <button id="cancelSettingsBtn" class="btn-secondary" style="margin-top: 0.5rem;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirmModal" class="modal hidden" style="z-index: 2000;">
+        <div class="modal-content">
+            <div class="modal-icon">❓</div>
+            <h2 id="confirmTitle">Are you sure?</h2>
+            <p id="confirmMessage">This action cannot be undone.</p>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button id="confirmCancelBtn" class="btn-secondary" style="flex: 1;">Cancel</button>
+                <button id="confirmOkBtn" class="btn-primary" style="flex: 1; background: #ef4444;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="alertModal" class="modal hidden" style="z-index: 2000;">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <h2 id="alertTitle">Notice</h2>
+            <p id="alertMessage">Something happened.</p>
+            <button id="alertOkBtn" class="btn-primary">OK</button>
+        </div>
+    </div>
+
+    <!-- Main Chat Container -->
+    <div class="chat-container" id="chatContainer">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">💬</span>
+                    <span class="logo-text" id="sidebarGroupName">Team Chat</span>
+                </div>
+            </div>
+            <div class="group-info">
+                <div class="group-avatar" id="groupAvatarSidebar">
+                    <span>TC</span>
+                </div>
+                <div class="group-details">
+                    <h3 id="groupNameDisplay">Team Chat</h3>
+                    <p><span id="memberCount">1</span> member online</p>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h4>Your Profile</h4>
+                <div class="user-profile">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <span id="currentUsername">User</span>
+                    <button id="editNameBtn" class="btn-icon" title="Edit name">✏️</button>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h4>Quick Actions</h4>
+                <button id="newChatBtn" class="btn-secondary">
+                    <span>➕</span> New Group
+                </button>
+                <button id="clearChatBtn" class="btn-secondary" style="margin-top: 0.5rem;">
+                    <span>🗑️</span> Clear Chat
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-main">
+            <!-- Chat Header -->
+            <header class="chat-header">
+                <div class="header-info">
+                    <button id="menuToggle" class="btn-icon mobile-only">☰</button>
+                    <div class="header-avatar" id="headerGroupAvatar">TC</div>
+                    <div class="header-text">
+                        <h2 id="headerGroupName">Team Chat</h2>
+                        <span class="status">🟢 Active now</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="searchBtn" class="btn-icon" title="Search">🔍</button>
+                    <button id="settingsBtn" class="btn-icon" title="Settings">⚙️</button>
+                </div>
+            </header>
+
+            <!-- Messages Area -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="messages-wrapper" id="messagesWrapper">
+                    <!-- Welcome message -->
+                    <div class="system-message">
+                        <span>Welcome to Team Chat! Start the conversation 🎉</span>
+                    </div>
+                    <!-- Messages will be inserted here -->
+                </div>
+            </div>
+
+            <!-- File Preview Area -->
+            <div class="file-preview-container" id="filePreviewContainer">
+                <!-- File previews will appear here -->
+            </div>
+
+            <!-- Input Area -->
+            <footer class="chat-input-area">
+                <div class="input-wrapper">
+                    <div class="input-actions">
+                        <input type="file" id="fileInput" multiple hidden accept="*/*">
+                        <input type="file" id="imageInput" multiple hidden accept="image/*">
+                        <input type="file" id="videoInput" multiple hidden accept="video/*">
+
+                        <button class="btn-icon attach-btn" id="attachFileBtn" title="Attach file">
+                            📎
+                        </button>
+                        <button class="btn-icon attach-btn" id="attachImageBtn" title="Attach image">
+                            🖼️
+                        </button>
+                        <button class="btn-icon attach-btn" id="attachVideoBtn" title="Attach video">
+                            🎬
+                        </button>
+                        <button class="btn-icon attach-btn" id="voiceRecordBtn" title="Record voice message">
+                            🎤
+                        </button>
+                    </div>
+
+                    <!-- Recording Indicator -->
+                    <div class="recording-indicator" id="recordingIndicator">
+                        <span class="recording-dot"></span>
+                        <span class="recording-text">Recording...</span>
+                        <span class="recording-time" id="recordingTime">0:00</span>
+                    </div>
+
+                    <div class="message-input-container">
+                        <textarea id="messageInput" placeholder="Type a message..." rows="1"
+                            maxlength="5000"></textarea>
+                    </div>
+
+                    <button id="sendBtn" class="btn-send" title="Send message">
+                        <span class="send-icon">➤</span>
+                    </button>
+                </div>
+            </footer>
+        </main>
+    </div>
+</body>
+
+</html>
