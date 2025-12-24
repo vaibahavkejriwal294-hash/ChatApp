@@ -159,17 +159,55 @@ function setupEventListeners() {
     // Auto-resize textarea
     messageInput.addEventListener('input', autoResizeTextarea);
 
-    // File inputs
-    attachFileBtn.addEventListener('click', () => fileInput.click());
-    attachImageBtn.addEventListener('click', () => imageInput.click());
-    attachVideoBtn.addEventListener('click', () => videoInput.click());
+    // File inputs and Attachment Menu
+    const toggleAttachmentsBtn = document.getElementById('toggleAttachmentsBtn');
+    const attachmentMenu = document.getElementById('attachmentMenu');
+
+    if (toggleAttachmentsBtn) {
+        toggleAttachmentsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            attachmentMenu.classList.toggle('hidden');
+        });
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (attachmentMenu && !attachmentMenu.contains(e.target) && e.target !== toggleAttachmentsBtn) {
+            attachmentMenu.classList.add('hidden');
+        }
+    });
+
+    // Close menu after selecting an option and trigger input
+    if (attachFileBtn) {
+        attachFileBtn.addEventListener('click', () => {
+            if (attachmentMenu) attachmentMenu.classList.add('hidden');
+            fileInput.click();
+        });
+    }
+    if (attachImageBtn) {
+        attachImageBtn.addEventListener('click', () => {
+            if (attachmentMenu) attachmentMenu.classList.add('hidden');
+            imageInput.click();
+        });
+    }
+    if (attachVideoBtn) {
+        attachVideoBtn.addEventListener('click', () => {
+            if (attachmentMenu) attachmentMenu.classList.add('hidden');
+            videoInput.click();
+        });
+    }
 
     fileInput.addEventListener('change', (e) => handleFileSelect(e, 'file'));
     imageInput.addEventListener('change', (e) => handleFileSelect(e, 'image'));
     videoInput.addEventListener('change', (e) => handleFileSelect(e, 'video'));
 
     // Voice recording
-    voiceRecordBtn.addEventListener('click', toggleVoiceRecording);
+    if (voiceRecordBtn) {
+        voiceRecordBtn.addEventListener('click', () => {
+            if (attachmentMenu) attachmentMenu.classList.add('hidden');
+            toggleVoiceRecording();
+        });
+    }
 
     // Edit name
     editNameBtn.addEventListener('click', handleEditName);
@@ -237,6 +275,30 @@ function handleEditName() {
         updateUserDisplay();
         addSystemMessage(`${oldName} changed their name to ${currentUser}`);
     }
+}
+
+async function handleClearChat() {
+    showConfirm(
+        'Clear Chat History?',
+        'This will permanently delete all messages. Continue?',
+        async () => {
+            try {
+                const { error } = await supabaseClient
+                    .from('messages')
+                    .delete()
+                    .neq('id', 0);
+
+                if (error) throw error;
+
+                messages = [];
+                renderMessages();
+                addSystemMessage('Chat history cleared');
+            } catch (e) {
+                console.error('Error clearing chat:', e);
+                showAlert('Error', 'Failed to clear chat history.');
+            }
+        }
+    );
 }
 
 // ============================================
@@ -725,14 +787,26 @@ function createNewGroup() {
     showConfirm(
         'Create New Group?',
         'Creating a new group will clear the current chat history. Continue?',
-        () => {
-            groupName = newName;
-            localStorage.setItem('chatGroupName', groupName);
-            messages = [];
-            localStorage.removeItem('chatMessages');
-            updateGroupDisplay();
-            renderMessages();
-            addSystemMessage(`Welcome to the new group: ${groupName}! 🎉`);
+        async () => {
+            try {
+                // Clear Supabase messages
+                const { error } = await supabaseClient
+                    .from('messages')
+                    .delete()
+                    .neq('id', 0);
+
+                if (error) throw error;
+
+                groupName = newName;
+                localStorage.setItem('chatGroupName', groupName);
+                messages = [];
+                updateGroupDisplay();
+                renderMessages();
+                addSystemMessage(`Welcome to the new group: ${groupName}! 🎉`);
+            } catch (e) {
+                console.error('Error creating new group:', e);
+                showAlert('Error', 'Failed to create new group.');
+            }
         }
     );
 }
@@ -800,81 +874,26 @@ function setupRealtimeSubscription() {
         .channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
             const newMsg = payload.new;
-            const message = {
-                id: newMsg.id,
-                sender: newMsg.sender,
-                text: newMsg.content,
-                timestamp: newMsg.created_at,
-                files: newMsg.file_url ? [{
-                    name: newMsg.file_name,
-                    size: newMsg.file_size,
-                    data: newMsg.file_url,
-                    type: 'file'
-                }] : []
-            };
-
-            // Avoid duplicating if we just sent it (though ID check handles this usually)
-            if (!messages.find(m => m.id === message.id)) {
+            // Avoid duplicate rendering if we just sent it
+            if (newMsg.sender !== currentUser) {
+                const message = {
+                    id: newMsg.id,
+                    sender: newMsg.sender,
+                    text: newMsg.content,
+                    timestamp: newMsg.created_at,
+                    files: newMsg.file_url ? [{
+                        name: newMsg.file_name,
+                        size: newMsg.file_size,
+                        data: newMsg.file_url,
+                        type: 'file'
+                    }] : []
+                };
                 messages.push(message);
                 renderMessage(message);
                 scrollToBottom();
             }
         })
         .subscribe();
-}
-
-function handleClearChat() {
-    showConfirm(
-        'Clear Chat History?',
-        'Are you sure you want to clear all messages? This cannot be undone.',
-        () => {
-            messages = [];
-            localStorage.removeItem('chatMessages');
-            renderMessages();
-
-            // Close sidebar on mobile if open
-            if (window.innerWidth <= 768) {
-                sidebar.classList.remove('active');
-            }
-        }
-    );
-}
-
-// ============================================
-// CUSTOM MODAL HELPERS
-// ============================================
-
-function showConfirm(title, message, onConfirm) {
-    confirmTitle.textContent = title;
-    confirmMessage.textContent = message;
-    confirmModal.classList.remove('hidden');
-
-    const handleConfirm = () => {
-        onConfirm();
-        closeConfirm();
-    };
-
-    const closeConfirm = () => {
-        confirmModal.classList.add('hidden');
-        confirmOkBtn.removeEventListener('click', handleConfirm);
-        confirmCancelBtn.removeEventListener('click', closeConfirm);
-    };
-
-    confirmOkBtn.addEventListener('click', handleConfirm);
-    confirmCancelBtn.addEventListener('click', closeConfirm);
-}
-
-function showAlert(title, message) {
-    alertTitle.textContent = title;
-    alertMessage.textContent = message;
-    alertModal.classList.remove('hidden');
-
-    const closeAlert = () => {
-        alertModal.classList.add('hidden');
-        alertOkBtn.removeEventListener('click', closeAlert);
-    };
-
-    alertOkBtn.addEventListener('click', closeAlert);
 }
 
 // ============================================
@@ -918,3 +937,34 @@ window.removePreviewFile = removePreviewFile;
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', init);
+
+// Custom Alert/Confirm
+function showAlert(title, message) {
+    alertTitle.textContent = title;
+    alertMessage.textContent = message;
+    alertModal.classList.remove('hidden');
+}
+
+function showConfirm(title, message, onConfirm) {
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    confirmModal.classList.remove('hidden');
+
+    const handleConfirm = () => {
+        onConfirm();
+        closeConfirm();
+    };
+
+    confirmOkBtn.onclick = handleConfirm;
+    confirmCancelBtn.onclick = closeConfirm;
+}
+
+function closeConfirm() {
+    confirmModal.classList.add('hidden');
+}
+
+function closeAlert() {
+    alertModal.classList.add('hidden');
+}
+
+alertOkBtn.addEventListener('click', closeAlert);
