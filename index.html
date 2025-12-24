@@ -168,18 +168,24 @@
                         <input type="file" id="imageInput" multiple hidden accept="image/*">
                         <input type="file" id="videoInput" multiple hidden accept="video/*">
 
-                        <button class="btn-icon attach-btn" id="attachFileBtn" title="Attach file">
-                            📎
+                        <button class="btn-icon attach-btn" id="toggleAttachmentsBtn" title="More options">
+                            ➕
                         </button>
-                        <button class="btn-icon attach-btn" id="attachImageBtn" title="Attach image">
-                            🖼️
-                        </button>
-                        <button class="btn-icon attach-btn" id="attachVideoBtn" title="Attach video">
-                            🎬
-                        </button>
-                        <button class="btn-icon attach-btn" id="voiceRecordBtn" title="Record voice message">
-                            🎤
-                        </button>
+
+                        <div class="attachment-menu hidden" id="attachmentMenu">
+                            <button class="btn-icon attach-btn" id="attachFileBtn" title="Attach file">
+                                📎
+                            </button>
+                            <button class="btn-icon attach-btn" id="attachImageBtn" title="Attach image">
+                                🖼️
+                            </button>
+                            <button class="btn-icon attach-btn" id="attachVideoBtn" title="Attach video">
+                                🎬
+                            </button>
+                            <button class="btn-icon attach-btn" id="voiceRecordBtn" title="Record voice message">
+                                🎤
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Recording Indicator -->
